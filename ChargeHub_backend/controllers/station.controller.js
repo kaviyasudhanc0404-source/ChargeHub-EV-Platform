@@ -120,7 +120,10 @@ exports.updateStation = asyncHandler(async (req, res) => {
     fields.location = await ensureCoordinates({ ...station.location.toObject(), ...fields.location }, pinConfirmed(req));
   }
   station.set(fields);
+  const renamed = station.isModified('name');
   await station.save();
+  // Bookings keep a copy of the station name (receipts, notifications, payment history): keep it in step
+  if (renamed) await Booking.updateMany({ stationId: station._id }, { $set: { stationName: station.name } });
   res.json({ success: true, message: 'Station updated successfully', data: station });
 });
 

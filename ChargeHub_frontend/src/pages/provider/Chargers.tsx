@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, MapPin, MapPinned, Trash2, Building2, Zap, Loader2 } from "lucide-react";
+import { Plus, MapPin, Pencil, Save, Trash2, Building2, Zap, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,15 +60,29 @@ const EMPTY_FORM = {
   close: "22:00",
 };
 
-// Chargers at the same place are grouped as one station
+// Chargers at the same place are grouped as one station. Each charger is saved as "<station name> - <charger name>".
 const groupKey = (s: Station) => `${s.location.address}|${s.location.coordinates.lat.toFixed(5)}|${s.location.coordinates.lng.toFixed(5)}`;
-const baseName = (name: string) => name.split(" - ")[0];
+// Split at the last separator: charger names never contain one, but a station name may ("Erode - Bus Stand Hub")
+const NAME_SEPARATOR = " - ";
+const splitName = (name: string): [station: string, charger: string] => {
+  const index = name.lastIndexOf(NAME_SEPARATOR);
+  return index < 0 ? [name, ""] : [name.slice(0, index), name.slice(index + NAME_SEPARATOR.length)];
+};
+const baseName = (name: string) => splitName(name)[0];
+const chargerName = (name: string) => splitName(name)[1];
+const fullName = (station: string, charger: string) => [station.trim(), charger].filter(Boolean).join(NAME_SEPARATOR);
+
+const ADDRESS_FIELDS = ["address", "city", "state", "pincode"] as const;
+const sameLocation = (a: Station["location"], b: Station["location"]) =>
+  ADDRESS_FIELDS.every((key) => (a[key] || "") === (b[key] || "")) &&
+  a.coordinates.lat === b.coordinates.lat &&
+  a.coordinates.lng === b.coordinates.lng;
 
 const Chargers = () => {
   const [stations, setStations] = useState<Station[] | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
-  const [relocating, setRelocating] = useState<Station[] | null>(null);
+  const [editing, setEditing] = useState<Station[] | null>(null); // the chargers of the station being edited
   const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
 
@@ -88,8 +102,8 @@ const Chargers = () => {
     return [...map.values()];
   }, [stations]);
 
-  // Add a charger (optionally at an existing station's location), or move a station: `relocate` = its chargers
-  const openDialog = (location?: Station, relocate: Station[] | null = null) => {
+  // Add a charger (optionally at an existing station's location), or edit a station's name and location: `edit` = its chargers
+  const openDialog = (location?: Station, edit: Station[] | null = null) => {
     setForm(
       location
         ? {
@@ -103,28 +117,42 @@ const Chargers = () => {
           }
         : EMPTY_FORM
     );
-    setRelocating(relocate);
+    setEditing(edit);
     setDialogOpen(true);
   };
 
   // `pinConfirmed`: the provider has confirmed a pin that is far from the area named in the address
   const save = async (pinConfirmed = false) => {
     const charger = CHARGERS[form.chargerType];
-    if (!relocating && (!charger || !form.connector)) return toast.error("Choose the charger and connector type");
+    const stationName = form.stationName.trim();
+    if (!stationName) return toast.error("Enter the station name");
+    if (!editing && (!charger || !form.connector)) return toast.error("Choose the charger and connector type");
     if (!form.coords) return toast.error("Place the station pin on the map");
 
     const location = {
-      address: form.address.trim(), city: form.city.trim(), state: form.state.trim(), pincode: form.pincode.trim(), coordinates: form.coords, pinConfirmed,
+      address: form.address.trim(), city: form.city.trim(), state: form.state.trim(), pincode: form.pincode.trim(), coordinates: form.coords,
     };
     setSaving(true);
     try {
-      if (relocating) {
-        await Promise.all(relocating.map((c) => stationAPI.updateStation(c._id, { location })));
-        toast.success("Station location updated");
+      if (editing) {
+        // Send only what changed, so a rename alone doesn't re-check the map pin
+        const renamed = stationName !== baseName(editing[0].name);
+        const moved = !sameLocation(editing[0].location, location);
+        if (renamed || moved) {
+          await Promise.all(
+            editing.map((c) =>
+              stationAPI.updateStation(c._id, {
+                ...(renamed && { name: fullName(stationName, chargerName(c.name)) }),
+                ...(moved && { location: { ...location, pinConfirmed } }),
+              })
+            )
+          );
+          toast.success("Station updated");
+        }
       } else {
         const { data } = await stationAPI.createStation({
-          name: `${form.stationName.trim()} - ${charger.name}`,
-          location,
+          name: fullName(stationName, charger.name),
+          location: { ...location, pinConfirmed },
           chargerType: form.chargerType,
           power: charger.power,
           vehicleType: charger.vehicleType,
@@ -148,7 +176,7 @@ const Chargers = () => {
           },
         });
       } else {
-        toast.error(errorMessage(error, relocating ? "Failed to update the location" : "Failed to add charger"));
+        toast.error(errorMessage(error, editing ? "Failed to update the station" : "Failed to add charger"));
       }
     } finally {
       setSaving(false);
@@ -229,7 +257,7 @@ const Chargers = () => {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="mr-1 text-sm text-muted-foreground">{online}/{chargers.length} online</span>
                   <Button size="sm" variant="outline" onClick={() => openDialog(first, chargers)}>
-                    <MapPinned /> Edit location
+                    <Pencil /> Edit station
                   </Button>
                   <Button size="sm" variant="outline" onClick={() => openDialog(first)}>
                     <Plus /> Add charger here
@@ -271,9 +299,9 @@ const Chargers = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{relocating ? `Edit location of ${form.stationName}` : "Add charging point"}</DialogTitle>
+            <DialogTitle>{editing ? `Edit ${baseName(editing[0].name)}` : "Add charging point"}</DialogTitle>
             <DialogDescription>
-              {relocating && relocating.length > 1 ? `Moves all ${relocating.length} chargers at this station. ` : ""}
+              {editing && editing.length > 1 ? `Changes apply to all ${editing.length} chargers at this station. ` : ""}
               Place the pin exactly at the charger so drivers get accurate distances and directions.
             </DialogDescription>
           </DialogHeader>
@@ -284,12 +312,10 @@ const Chargers = () => {
             }}
             className="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
-            {!relocating && (
-              <div className="md:col-span-2 space-y-2">
-                <Label htmlFor="stationName">Station name</Label>
-                <Input id="stationName" required value={form.stationName} onChange={(e) => setForm({ ...form, stationName: e.target.value })} placeholder="e.g. Gobi Bus Stand EV Hub" />
-              </div>
-            )}
+            <div className="md:col-span-2 space-y-2">
+              <Label htmlFor="stationName">Station name</Label>
+              <Input id="stationName" required value={form.stationName} onChange={(e) => setForm({ ...form, stationName: e.target.value })} placeholder="e.g. Gobi Bus Stand EV Hub" />
+            </div>
             <div className="md:col-span-2 space-y-2">
               <Label htmlFor="address">Address</Label>
               <Input id="address" required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, landmark, plus code (e.g. Bus stand, FC3P+W5P)" />
@@ -317,7 +343,7 @@ const Chargers = () => {
               )}
             </div>
 
-            {!relocating && (
+            {!editing && (
               <>
                 <div className="space-y-2">
                   <Label>Vehicle type</Label>
@@ -381,8 +407,8 @@ const Chargers = () => {
             )}
 
             <Button type="submit" size="lg" disabled={saving} className="md:col-span-2">
-              {saving ? <Loader2 className="animate-spin" /> : relocating ? <MapPinned /> : <Zap />}
-              {relocating ? "Save location" : "Submit for approval"}
+              {saving ? <Loader2 className="animate-spin" /> : editing ? <Save /> : <Zap />}
+              {editing ? "Save changes" : "Submit for approval"}
             </Button>
           </form>
         </DialogContent>
