@@ -1,0 +1,33 @@
+/* Thin white lines between map tiles at non-100% display scaling: Leaflet's fade-in marks every tile
+   "will-change: opacity", so Chrome paints each tile as a separate layer with visible edges. Paint them together. */
+.leaflet-fade-anim .leaflet-tile {
+  will-change: auto;
+}
+
+.leaflet-container {
+  background: #e5e3df;
+  font-family: inherit;
+}
+
+.leaflet-container.picking,
+.leaflet-container.picking .leaflet-interactive {
+  cursor: crosshair;
+}
+
+/* CSS pins (see pinIcon in leaflet.ts) */
+.map-pin {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 3px solid #ffffff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+  cursor: grab;
+}
+
+.map-pin--user {
+  background: #2563eb;
+}
+
+.map-pin--station {
+  background: #10b981;
+}

@@ -1,0 +1,232 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens (HSL). Dark is the default theme; `.light` on <html> switches to light. */
+@layer base {
+  :root {
+    --background: 228 32% 5%;
+    --foreground: 210 40% 98%;
+    --card: 226 28% 9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 226 28% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 148 86% 45%;
+    --primary-foreground: 158 80% 6%;
+    --secondary: 226 24% 14%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 226 24% 13%;
+    --muted-foreground: 218 14% 63%;
+    --accent: 45 100% 56%;
+    --accent-foreground: 30 60% 8%;
+    --electric: 188 95% 55%;
+    --destructive: 0 84% 62%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 226 22% 17%;
+    --input: 226 22% 19%;
+    --radius: 0.9rem;
+    /* "Ask Me" assistant: its own aurora colours, the same in every panel */
+    --ai: 263 88% 70%;
+    --ai-2: 189 94% 56%;
+  }
+
+  .light {
+    --background: 220 33% 97%;
+    --foreground: 226 42% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 226 42% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 226 42% 10%;
+    --primary: 152 82% 34%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 26% 93%;
+    --secondary-foreground: 226 42% 10%;
+    --muted: 220 26% 94%;
+    --muted-foreground: 220 12% 40%;
+    --accent: 38 96% 48%;
+    --accent-foreground: 30 60% 8%;
+    --electric: 192 90% 38%;
+    --border: 220 20% 88%;
+    --input: 220 20% 85%;
+    --ai: 263 70% 56%;
+    --ai-2: 192 88% 38%;
+  }
+
+  /* Each panel has its own colour: drivers green (default), providers amber, admins blue */
+  [data-panel="provider"] {
+    --primary: 38 96% 54%;
+    --primary-foreground: 30 60% 8%;
+    --electric: 22 96% 58%;
+  }
+  [data-panel="admin"] {
+    --primary: 217 92% 64%;
+    --primary-foreground: 0 0% 100%;
+    --electric: 258 90% 70%;
+  }
+  .light [data-panel="provider"] {
+    --primary: 32 95% 44%;
+    --primary-foreground: 0 0% 100%;
+  }
+  .light [data-panel="admin"] {
+    --primary: 221 83% 53%;
+    --electric: 258 80% 58%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  /* Keyboard focus in the brand colour; no outline after a mouse click (e.g. the white box on the logo) */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 3px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  /* clip (not hidden): hidden turns these into scroll containers, which breaks position: sticky */
+  html, body, #root {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  h1, h2, h3 {
+    @apply font-display tracking-tight;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.3);
+  }
+}
+
+@layer components {
+  /* Frosted bar for sticky navigation */
+  .glass {
+    @apply bg-background/75 backdrop-blur-xl;
+  }
+
+  .text-gradient {
+    background: linear-gradient(100deg, hsl(var(--primary)) 0%, hsl(var(--electric)) 55%, hsl(var(--accent)) 110%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .bg-energy {
+    background: linear-gradient(120deg, hsl(var(--primary)) 0%, hsl(var(--electric)) 100%);
+  }
+
+  /* Faint blueprint grid that fades out towards the edges */
+  .bg-grid {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.55) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.55) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  }
+
+  .shadow-glow {
+    box-shadow: 0 10px 40px -12px hsl(var(--primary) / 0.55);
+  }
+
+  /* Cards that react to the pointer (transform/shadow only, cheap to animate) */
+  .lift {
+    @apply transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-primary/40 hover:shadow-glow;
+  }
+
+  /* Slim scrollbar for panels that scroll on their own */
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+
+  /* Swipeable strips: no scrollbar */
+  .scroll-none {
+    scrollbar-width: none;
+  }
+  .scroll-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Pulsing "live" dot */
+  .live-dot {
+    @apply relative inline-flex h-2 w-2 rounded-full bg-primary;
+  }
+  .live-dot::after {
+    content: "";
+    @apply absolute inset-0 rounded-full bg-primary animate-ping-slow;
+  }
+
+  /* Scroll reveal (see components/Reveal.tsx) */
+  .reveal {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Entrance animation for page sections; stagger with style={{ animationDelay }} */
+  .enter {
+    @apply animate-enter;
+    animation-fill-mode: both;
+  }
+
+  /* "Ask Me" assistant */
+  .bg-aurora {
+    background: linear-gradient(135deg, hsl(var(--ai)) 0%, hsl(var(--ai-2)) 100%);
+  }
+  .text-aurora {
+    background: linear-gradient(100deg, hsl(var(--ai)) 0%, hsl(var(--ai-2)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Slowly turning colour ring around the launcher */
+  .aurora-ring {
+    background: conic-gradient(from 0deg, hsl(var(--ai)), hsl(var(--ai-2)), hsl(var(--ai) / 0.2), hsl(var(--ai)));
+    @apply animate-[spin_6s_linear_infinite];
+  }
+  .shadow-aurora {
+    box-shadow: 0 18px 50px -14px hsl(var(--ai) / 0.65);
+  }
+  /* Floating assistant controls sit above the phone navigation dock where there is one */
+  .chat-float {
+    @apply bottom-4 md:bottom-6;
+  }
+  @media (max-width: 767px) {
+    body:has([data-mobile-dock]) .chat-float {
+      bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 4.75rem);
+    }
+  }
+
+  /* Current flowing along an SVG path */
+  .flow-line {
+    stroke-dasharray: 6 14;
+    @apply animate-flow;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}

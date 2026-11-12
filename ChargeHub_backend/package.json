@@ -1,0 +1,45 @@
+{
+  "name": "chargehub-backend",
+  "version": "1.0.0",
+  "description": "ChargeHub EV Charging Management Backend with MongoDB Atlas",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "seed": "node seed.js",
+    "setup-admin": "node setupAdmin.js",
+    "import-places": "node importPlaces.js",
+    "audit:locations": "node auditLocations.js",
+    "audit:locations:fix": "node auditLocations.js --fix"
+  },
+  "keywords": [
+    "ev",
+    "charging",
+    "mongodb",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.8.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "firebase-admin": "^14.5.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3",
+    "morgan": "^1.10.0",
+    "validator": "^13.15.20"
+  },
+  "devDependencies": {
+    "adm-zip": "^0.6.1",
+    "nodemon": "^3.1.10"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}
